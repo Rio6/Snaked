@@ -54,8 +54,8 @@ exports.getChoices = (pos, me, board, target) => {
 
 var Record = function (pos, me, board, win = false) {
     Record.tolerances = {
-        spaces: 5,
-        spacesPred: 5,
+        spaces: 0,
+        spacesPred: 0,
         seesTail: 0,
         lengthDiffNear: 0,
     };
@@ -88,23 +88,28 @@ var findWinRate = (rec) => {
     for(let i in data) {
         let d = data[i];
         let name = d.name;
-        rates[name] = rates[name] || {wins: 0, total: 0};
+        rates[name] = rates[name] || {};
         if(Math.abs(rec[name] - d.value) <= Record.tolerances[name]) {
-            if(d.win) rates[name].wins += d.count;
-            rates[name].total += d.count;
+            rates[name][d.value] = rates[name][d.value] || {wins:0, total: 0};
+            if(d.win) rates[name][d.value].wins += d.count;
+            rates[name][d.value].total += d.count;
         }
     }
-    let totalWinRate = 1;
+    let totalWins = 0;
+    let totalTotal = 0;
     for(let i in rates) {
-        let r = rates[i];
-        if(r.total >= MIN_TOTAL) {
-            totalWinRate *= (r.wins / r.total) ** Record.weights[i];
-        } else {
-            console.log("Trying", i, rec[i]);
-            return 2; // Encourage to try unknown things
+        for(let j in rates[i]) {
+            let r = rates[i][j];
+            if(r.total >= MIN_TOTAL) {
+                totalWins += r.wins * Record.weights[i];
+                totalTotal += r.total * Record.weights[i];
+            } else {
+                console.log("Trying", i, rec[i]);
+                return 2; // Encourage to try unknown things
+            }
         }
     }
-    return totalWinRate;
+    return totalWins / totalTotal;
 };
 
 exports.addData = (pos, me, board, win) => {
