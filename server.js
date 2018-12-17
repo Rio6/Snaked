@@ -41,6 +41,7 @@ app.post('/move', (req, res) => {
 
     let frame = req.body;
     frame.dir = dir;
+    frame.choices = choices;
     frames[frame.game.id][frame.turn] = frame;
     res.json({
         move: dir
@@ -69,7 +70,7 @@ app.post('/end', (req, res) => {
         let me = frame.you;
         let head = me.body[0];
         let board = frame.board;
-        if(!win && data.getChoices(head, me, board).length <= 1)
+        if(!win && frame.choices.length <= 1)
             continue;
         let rec = data.addData(util.add(head, util.dirs[frame.dir]), me, board, win);
         if(!win) console.log(rec);
@@ -80,7 +81,7 @@ app.post('/end', (req, res) => {
     gameCount++;
     if(gameCount % 5 === 0)
         data.save(DATA_FILE);
-    
+
     res.send("blah");
 });
 

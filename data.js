@@ -36,7 +36,7 @@ exports.getChoices = (pos, me, board, target) => {
         let rec = new Record(p, me, board);
         let rate = findWinRate(rec);
         //console.log(rec.serialize(), rate, i);
-        //if(rate > MIN_RATE)
+        if(rate > MIN_RATE)
             choices.push({
                 dir: i,
                 rate: rate,
@@ -85,20 +85,20 @@ var Record = function (pos, me, board, win = false) {
 
 var findWinRate = (rec) => {
     let rates = {};
-    for(let d of data) {
-        for(let i in Record.tolerances) {
-            rates[i] = rates[i] || {wins: 0, total: 0};
-            if(Math.abs(rec[i] - d[i]) <= Record.tolerances[i]) {
-                if(d.win) rates[i].wins += d.count;
-                rates[i].total += d.count;
-            }
+    for(let i in data) {
+        let d = data[i];
+        let name = d.name;
+        rates[name] = rates[name] || {wins: 0, total: 0};
+        if(Math.abs(rec[name] - d.value) <= Record.tolerances[name]) {
+            if(d.win) rates[name].wins += d.count;
+            rates[name].total += d.count;
         }
     }
     let totalWinRate = 1;
     for(let i in rates) {
         let r = rates[i];
         if(r.total >= MIN_TOTAL) {
-            totalWinRate *= (r.wins / r.total) * Record.weights[i];
+            totalWinRate *= (r.wins / r.total) ** Record.weights[i];
         } else {
             console.log("Trying", i, rec[i]);
             return 2; // Encourage to try unknown things
@@ -109,22 +109,25 @@ var findWinRate = (rec) => {
 
 exports.addData = (pos, me, board, win) => {
     let record = new Record(pos, me, board, win).serialize();
-    for(let d of data) {
-        let same = true;
-        for(let i in record) {
-            if(d.win !== record.win ||
-                d[i] !== record[i]) {
-                same = false
-                break;
+    for(let i in record) {
+        if(i === 'win') continue;
+        let same = false;
+        for(let j in data) {
+            let d = data[j];
+            if(d.name !== i) continue;
+            if(d.value === record[i] && d.win === record.win) {
+                data[j].count++;
+                same = true;
             }
         }
-        if(same) {
-            d.count++;
-            return d;
+        if(!same) {
+            data.push({
+                name: i,
+                value: record[i],
+                win: record.win,
+                count: 1
+            });
         }
     }
-
-    record.count = 1;
-    data.push(record);
     return record;
 };
