@@ -1,8 +1,7 @@
 var fs = require('fs');
 var util = require('./util.js');
 
-var MIN_RATE = .5;
-var MIN_TOTAL = 5;
+var MIN_TOTAL = 10;
 
 var exports = module.exports;
 
@@ -36,12 +35,11 @@ exports.getChoices = (pos, me, board, target) => {
         let rec = new Record(p, me, board);
         let rate = findWinRate(rec);
         //console.log(rec.serialize(), rate, i);
-        if(rate > MIN_RATE)
-            choices.push({
-                dir: i,
-                rate: rate,
-                pos: p
-            });
+        choices.push({
+            dir: i,
+            rate: rate,
+            pos: p
+        });
     }
     return choices.sort((a, b) => {
         let rateDiff = b.rate - a.rate;
@@ -49,7 +47,7 @@ exports.getChoices = (pos, me, board, target) => {
             return rateDiff;
         else
             return util.distance(a.pos, target) - util.distance(b.pos, target);
-    }).map(c => c.dir);
+    });
 };
 
 var Record = function (pos, me, board, win = false) {
@@ -95,21 +93,21 @@ var findWinRate = (rec) => {
             rates[name][d.value].total += d.count;
         }
     }
-    let totalWins = 0;
-    let totalTotal = 0;
+    let totalRate = 1;
     for(let i in rates) {
         for(let j in rates[i]) {
             let r = rates[i][j];
             if(r.total >= MIN_TOTAL) {
-                totalWins += r.wins * Record.weights[i];
-                totalTotal += r.total * Record.weights[i];
-            } else {
+                totalRate *= (r.wins / r.total);// ** Record.weights[i];
+            } else if(!i.includes('spaces')) {
+                // Encourage to try unknown things, but not spaces
+                // Too many spaces
                 console.log("Trying", i, rec[i]);
-                return 2; // Encourage to try unknown things
+                return 2;
             }
         }
     }
-    return totalWins / totalTotal;
+    return totalRate;
 };
 
 exports.addData = (pos, me, board, win) => {

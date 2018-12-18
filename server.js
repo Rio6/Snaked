@@ -35,9 +35,9 @@ app.post('/move', (req, res) => {
     var food = board.food.slice().sort((a, b) => util.distance(a, head) - util.distance(b, head))[0];
 
     choices = data.getChoices(head, me, board, food);
-    console.log(req.body.turn, choices);
+    console.log(req.body.turn, choices.map(c => c.dir));
     if(choices.length > 0)
-        dir = choices[0];
+        dir = choices[0].dir;
 
     let frame = req.body;
     frame.dir = dir;
@@ -70,11 +70,12 @@ app.post('/end', (req, res) => {
         let me = frame.you;
         let head = me.body[0];
         let board = frame.board;
-        if(!win && frame.choices.length <= 1)
-            continue;
         let rec = data.addData(util.add(head, util.dirs[frame.dir]), me, board, win);
-        if(!win) console.log(rec);
-        win = true;
+        if(!win) {
+            //console.log(rec, frame.choices[0].rate);
+            win = frame.choices.filter(c => c.rate > .5).length > 1;
+            continue;
+        }
     }
     frames[req.body.game.id] = [];
 
