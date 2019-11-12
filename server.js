@@ -57,7 +57,7 @@ app.post('/end', (req, res) => {
     console.log("Ended game", "https://play.battlesnake.com/g/" + req.body.game.id);
 
     let win = false;
-    if(req.body.board.snakes.filter(snake => snake.health > 0 && snake.name === req.body.you.name).length > 0) {
+    if(req.body.board.snakes.filter(snake => snake.health > 0 && snake.id === req.body.you.id).length > 0) {
         console.log("Won");
         // Won it
         win = true;
