@@ -55,13 +55,13 @@ var Record = function (pos, me, board, win = false) {
         spaces: 0,
         spacesPred: 0,
         seesTail: 0,
-        lengthDiffNear: 0,
+        lengthDiffNear: 0
     };
     Record.weights = {
-        spaces: 4,
-        spacesPred: 4,
-        seesTail: 6,
-        lengthDiffNear: 3,
+        spaces: .4,
+        spacesPred: .4,
+        seesTail: .3,
+        lengthDiffNear: 2
     };
 
     this.win = win;
@@ -97,8 +97,8 @@ var findWinRate = (rec) => {
     for(let i in rates) {
         for(let j in rates[i]) {
             let r = rates[i][j];
-            if(r.total >= MIN_TOTAL) {
-                totalRate *= (r.wins / r.total);// ** Record.weights[i];
+            if(r.total > MIN_TOTAL) {
+                totalRate = Math.min((r.wins / r.total), totalRate);
             } else if(!i.includes('spaces')) {
                 // Encourage to try unknown things, but not spaces
                 // Too many spaces
