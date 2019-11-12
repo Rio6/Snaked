@@ -48,15 +48,11 @@ app.post('/move', (req, res) => {
     });
 });
 
+let wins5 = new Array(10);
+let winr = [];
 app.post('/end', (req, res) => {
 
-    if(req.body.turn <= 1) {
-        console.log("Ignoring dummy game");
-        res.send("bleh");
-        return;
-    }
-
-    console.log("Ended game", "http://play.battlesnake.io/games/" + req.body.game.id);
+    console.log("Ended game", "https://play.battlesnake.com/g/" + req.body.game.id);
 
     let win = false;
     if(req.body.board.snakes.filter(snake => snake.health > 0 && snake.name === req.body.you.name).length > 0) {
@@ -65,14 +61,20 @@ app.post('/end', (req, res) => {
         win = true;
     } else console.log("Lost");
 
+    wins5.shift();
+    wins5.push(win);
+    let r = wins5.filter(w => w).length;
+    winr.push(r);
+
     for(let i = frames[req.body.game.id].length-1; i >= 0; i--) {
         let frame = frames[req.body.game.id][i];
         let me = frame.you;
         let head = me.body[0];
         let board = frame.board;
+        //console.log(frame.choices);
         let rec = data.addData(util.add(head, util.dirs[frame.dir]), me, board, win);
         if(!win) {
-            //console.log(rec, frame.choices[0].rate);
+            console.log(rec, frame.choices[0].rate);
             win = frame.choices.filter(c => c.rate > .5).length > 1;
             continue;
         }
@@ -82,6 +84,14 @@ app.post('/end', (req, res) => {
     gameCount++;
     if(gameCount % 5 === 0)
         data.save(DATA_FILE);
+
+    console.log(r + " wins out of 10");
+    for(let i = 0; i < winr.length; i += Math.ceil(winr.length / 30)) {
+        let msg = "";
+        for(let j = 0; j < winr[i]; j++)
+            msg += "*";
+        console.log(msg);
+    }
 
     res.send("blah");
 });
