@@ -21,7 +21,9 @@ app.post('/start', (req, res) => {
     console.log("Starting game", req.body.game.id);
     frames[req.body.game.id] = [];
     res.json({
-        color: "#ffdd00"
+        color: "#ffdd00",
+        headType: "sand-worm",
+        tailType: "round-bum"
     });
 });
 
