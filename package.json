@@ -1,0 +1,14 @@
+{
+    "name": "Snaked",
+    "version": "0.1.0",
+    "description": "Snaked",
+    "main": "main.js",
+    "scripts": {
+        "start": "node main.js"
+    },
+    "author": "Rio",
+    "dependencies": {
+        "express": "^4.17.1",
+        "neataptic": "^1.4.7"
+    }
+}
