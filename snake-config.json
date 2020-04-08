@@ -1,20 +1,8 @@
 {
-    "width": 20,
-    "height": 20,
-    "food": 10,
+    "width": 10,
+    "height": 10,
+    "food": 2,
     "snakes": [
-        {
-            "name": "Snaked",
-            "url": "http://localhost:8000"
-        },
-        {
-            "name": "Snaked",
-            "url": "http://localhost:8000"
-        },
-        {
-            "name": "Snaked",
-            "url": "http://localhost:8000"
-        },
         {
             "name": "Snaked",
             "url": "http://localhost:8000"

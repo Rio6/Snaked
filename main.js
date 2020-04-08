@@ -11,21 +11,28 @@ const ENGINE = process.env.ENGINE || './engine';
 
 var config = {
     GAME_INTERVAL: 100, // in ms
-    GAMES_PER_BATCH: 25,
+    GAME_TIMEOUT: 60 * 1000, // in ms
+    MAX_GAMES: 100,
 
-    BRAIN_FILE: "brain.json",
+    BRAIN_FILE: "memory.json",
     BRAIN_DUMP_INTERVAL: 1, // in times
     GAME_URL: "http://localhost:3009/?engine=http://localhost:3005&game=",
 
     POP_SIZE: 500,
-    MUTATION_RATE: 0.3,
+    MUTATION_RATE: 1,
     ELITISM: 10
 };
+
+var brain = null;
+var snakes = [];
+var games = {};
+
+var dumpCounter = 0;
+var gameTimeout = null;
 
 var main = () => {
     let server = new Server(PORT);
 
-    let brain = null;
     if(fs.existsSync(config.BRAIN_FILE)) {
         console.log("Loading brain file");
         brain = new SnakeBrain(config, fs.readFileSync(config.BRAIN_FILE));
@@ -33,90 +40,64 @@ var main = () => {
         brain = new SnakeBrain(config);
     }
 
-    let games = {};
-    let snakes = [];
-    let dumpCounter = 0;
-
     server.on('serverStart', () => {
         console.log("Listening on", PORT);
-        games = {};
         snakes = [];
         startGames();
     });
 
     server.on('gameStart', data => {
-        let gameId = data.game.id;
-
-        if(!games[gameId]) {
-            games[gameId] = {
-                running: true
-            };
-        }
+        games[data.game.id] = true;
 
         snakes.push({
             id: data.you.id,
-            gameId: gameId
+            gameId: data.game.id,
+            score: 0,
+            running: true,
+            startTime: Date.now()
         });
     });
 
     server.on('gameEnd', data => {
-        let gameId = data.game.id;
-        if(!games[gameId] || !games[gameId].running) return
-        games[gameId].running = false;
+        delete games[data.game.id];
 
-        if(Object.values(games).every(g => !g.running)) {
-            // all games in batch ended
-            if(snakes.length >= config.POP_SIZE) {
-                // generation ended
+        let snake = snakes.find(s => s.id === data.you.id);
+        if(!snake) return;
 
-                // award the winner
-                let winner = data.board.snakes.find(s => s.health > 0);
-                if(winner) {
-                    let index = snakes.findIndex(s => s.id === winner.id);
-                    brain.award(index, 1, true);
-                }
+        snake.running = false;
 
-                // train the big brain
-                let best = brain.evolve();
-                console.log("Best game", config.GAME_URL + snakes[best].gameId);
+        // final score
+        if(data.board.snakes.find(s => s.id === data.you.id && s.health > 0))
+            snake.score = data.turn + 10; // winner
+        else
+            snake.score = data.turn;
 
-                // dump the big brain
-                dumpCounter++;
-                if(dumpCounter >= config.BRAIN_DUMP_INTERVAL) {
-                    console.log("Dumping brain");
-                    fs.writeFileSync(config.BRAIN_FILE, brain.dump());
-                    dumoCounter = 0;
-                }
-
-                // reset game data
-                games = {};
-                snakes = [];
-            }
-
-            setTimeout(startGames, config.GAME_INTERVAL);
-        }
+        tryLearn();
     });
 
     server.on('move', (data, move) => {
-        if(!games[data.game.id]) return;
-
         let index = snakes.findIndex(s => s.id === data.you.id && s.gameId === data.game.id);
-        let dir = brain.think(index, data.you, data.board);
-        brain.award(index, data.turn);
-
-        if(dir)
-            move(dir);
-        else
-            move("left");
+        move(brain.think(index, data.you, data.board));
     });
 
     server.start();
 };
 
 var startGames = () => {
-    console.log("Starting", config.GAMES_PER_BATCH, "games");
+    if(gameTimeout) clearTimeout(gameTimeout);
 
-    for(let i = 0; i < config.GAMES_PER_BATCH; i++) {
+    // set game status for inactive games
+    let now = Date.now();
+    let dead = snakes.filter(s => s.running && now - s.startTime > config.GAME_TIMEOUT)
+        .map(s => s.running = false).length;
+
+    if(dead > 0) {
+        console.warn(dead, "snakes timed out");
+        tryLearn();
+    }
+
+    // start more games when there's no enough snakes
+    if(Object.keys(games).length < config.MAX_GAMES && snakes.length < config.POP_SIZE) {
         exec(ENGINE + ' create', {stdio: 'ignore'}, (err, stdout, stderr) => {
             try {
                 let id = JSON.parse(stdout).ID;
@@ -127,11 +108,37 @@ var startGames = () => {
         });
     }
 
-    if(false) {
-        setTimeout(() => {
-            console.log("Retrying game start")
-            startGames();
-        }, 1000);
+    gameTimeout = setTimeout(startGames, config.GAME_INTERVAL);
+};
+
+var stopGames = () => clearTimeout(gameTimeout);
+
+var tryLearn = () => {
+    if(snakes.length < config.POP_SIZE) return;
+
+    let canLearn = true;
+    for(let i = 0; i < config.POP_SIZE; i++) {
+        if(snakes[i].running) {
+            canLearn = false;
+            break;
+        }
+    }
+
+    if(canLearn) {
+        // train the big brain
+        brain.setScores(snakes.map(s => s.score));
+        let best = brain.evolve();
+        console.log("Best game", config.GAME_URL + snakes[best].gameId);
+
+        // dump the big brain
+        dumpCounter++;
+        if(dumpCounter >= config.BRAIN_DUMP_INTERVAL) {
+            console.log("Dumping brain");
+            fs.writeFileSync(config.BRAIN_FILE, brain.dump());
+            dumpCounter = 0;
+        }
+
+        snakes = [];
     }
 };
 

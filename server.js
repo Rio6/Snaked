@@ -40,7 +40,7 @@ var Server = function(port) {
 
     app.post('/end', (req, res) => {
         this.emit('gameEnd', req.body);
-        res.send('yay');
+        res.end();
     });
 
     app.post('/ping', (req, res) => {

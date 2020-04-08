@@ -10,7 +10,7 @@ var SnakeBrain = function(config, dumped=null) {
 
     this.neat = new neataptic.Neat(1 + 5*8, 4, null, {
         popsize: config.POP_SIZE,
-        mutation: neataptic.methods.mutation.FFW,
+        mutation: neataptic.methods.mutation.ALL,
         mutationRate: config.MUTATION_RATE,
         elitism: config.ELITISM,
     });
@@ -18,7 +18,9 @@ var SnakeBrain = function(config, dumped=null) {
     if(dumped) {
         let data = JSON.parse(dumped);
         this.neat.generation = data.generation;
-        this.neat.population = data.brains.map(d => neataptic.Network.fromJSON(d));
+        this.neat.population = data.brains
+            .map(d => neataptic.Network.fromJSON(d))
+            .slice(0, config.POP_SIZE);
     }
 
     this.dump = () => JSON.stringify({
@@ -56,12 +58,8 @@ var SnakeBrain = function(config, dumped=null) {
         return bestIndex;
     }
 
-    this.award = (index, score, extra=false) => {
-        if(!this.neat.population[index]) return;
-        if(extra)
-            this.neat.population[index].score += score;
-        else
-            this.neat.population[index].score = score;
+    this.setScores = scores => {
+        this.neat.population.forEach((p, i) => p.score = scores[i] || 0);
     };
 
     this.think = (index, you, board) => {
