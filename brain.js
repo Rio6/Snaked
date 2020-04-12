@@ -20,13 +20,21 @@ var SnakeBrain = function(config, dumped=null) {
         this.neat.generation = data.generation;
         this.neat.population = data.brains
             .map(d => neataptic.Network.fromJSON(d))
-            .slice(0, config.POP_SIZE);
+            .slice(0, this.neat.popsize);
+
+        // Create more brains if there isn't enough
+        for(let i = this.neat.population.length; i < this.neat.popsize; i++) {
+            this.neat.population.push(this.neat.getOffspring());
+        }
     }
 
-    this.dump = () => JSON.stringify({
-        generation: this.neat.generation,
-        brains: this.neat.population.map(p => p.toJSON())
-    });
+    this.dump = () => {
+        this.neat.sort();
+        return JSON.stringify({
+            generation: this.neat.generation,
+            brains: this.neat.population.map(p => p.toJSON())
+        });
+    };
 
     this.evolve = () => {
         let bestIndex = 0;
